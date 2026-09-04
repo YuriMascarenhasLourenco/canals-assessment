@@ -202,14 +202,7 @@ docker compose down -v
 ### Seeding the database
 
 `prisma/seed.ts` is idempotent: customers and products use `upsert`, and
-warehouse inventory is updated or created with `upsert`. Run it after the
-schema exists:
-
-```bash
-# With PostgreSQL exposed on localhost
-npm run seed
-
-```
+warehouse inventory is updated or created with `upsert`. The docker compose already pushes the seed to the database
 
 The script creates or updates:
 
