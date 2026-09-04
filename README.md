@@ -164,14 +164,22 @@ constructor, so they're a drop-in swap for a real integration later:
 
 ## Run everything with Docker
 
-The Compose file starts PostgreSQL and builds the NestJS API image. The API
-container applies the Prisma schema before starting the server.
+## Run everything with Docker
 
+The Compose file starts three services:
 
+- `postgres`: PostgreSQL database with persistent storage.
+- `migrate`: waits for PostgreSQL, applies Prisma migrations, and runs the seed script.
+- `api`: starts only after `migrate` finishes successfully.
+
+First, create the environment file:
 
 ```bash
 # Copy .env.example
 cp .env.example .env
+```
+Then build the API image and start the services:
+```bash
 # Build the API image and start both services
 docker compose up -d 
 
