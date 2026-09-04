@@ -167,13 +167,6 @@ constructor, so they're a drop-in swap for a real integration later:
 The Compose file starts PostgreSQL and builds the NestJS API image. The API
 container applies the Prisma schema before starting the server.
 
-The checked-in Compose configuration currently has a credential mismatch:
-PostgreSQL is initialized with user `postgres` and password `1234`, while the
-API container is configured to connect as `postgres` with password `canals`. The
-full-stack command below needs that `DATABASE_URL` corrected in
-`docker-compose.yml` (or the database credentials changed) before it can
-connect successfully. The local workflow above, which uses `.env.example`, is
-the working path with the current files.
 
 
 ```bash
