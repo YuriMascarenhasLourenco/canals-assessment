@@ -1,0 +1,148 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Customer {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  createdAt DateTime @default(now())
+
+  orders Order[]
+
+  @@map("customers")
+}
+
+model Product {
+  id         String   @id @default(uuid())
+  sku        String   @unique
+  name       String
+  priceCents Int
+  createdAt  DateTime @default(now())
+
+  inventory  WarehouseInventory[]
+  orderItems OrderItem[]
+
+  @@map("products")
+}
+
+model Warehouse {
+  id           String  @id @default(uuid())
+  name         String
+  addressLine1 String
+  city         String
+  state        String
+  postalCode   String
+  country      String
+
+  // Pre-geocoded location of the warehouse itself. In a real system this
+  // would be geocoded once when the warehouse is created, not on every
+  // order.
+  latitude  Float
+  longitude Float
+
+  inventory WarehouseInventory[]
+  orders    Order[]
+
+  @@map("warehouses")
+}
+
+// Stock of a given product at a given warehouse. One row per
+// (warehouse, product) pair.
+model WarehouseInventory {
+  id          String @id @default(uuid())
+  warehouseId String
+  productId   String
+  quantity    Int
+
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([warehouseId, productId])
+  @@index([productId])
+  @@map("warehouse_inventory")
+}
+
+enum OrderStatus {
+  PENDING // order created, payment not yet attempted/settled
+  PAID // payment succeeded, inventory has been decremented
+  PAYMENT_FAILED // payment was declined/errored; order not fulfilled
+}
+
+model Order {
+  id         String @id @default(uuid())
+  customerId String
+
+  warehouseId String // the single warehouse this order is fulfilled from
+
+  // Shipping address is captured on the order itself (not just a reference
+  // to a customer's saved address) so the order remains accurate as a
+  // historical record.
+  shippingLine1      String
+  shippingCity       String
+  shippingState      String
+  shippingPostalCode String
+  shippingCountry    String
+  shippingLatitude   Float
+  shippingLongitude  Float
+
+  status           OrderStatus @default(PENDING)
+  totalAmountCents Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customer  Customer    @relation(fields: [customerId], references: [id])
+  warehouse Warehouse   @relation(fields: [warehouseId], references: [id])
+  items     OrderItem[]
+  payment   Payment?
+
+  @@index([customerId])
+  @@index([warehouseId])
+  @@map("orders")
+}
+
+model OrderItem {
+  id             String @id @default(uuid())
+  orderId        String
+  productId      String
+  quantity       Int
+  // Price snapshotted at order time, independent of later Product price
+  // changes.
+  priceCents Int
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([orderId, productId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+enum PaymentStatus {
+  SUCCEEDED
+  FAILED
+}
+
+// One payment attempt per order (kept simple per the assessment scope).
+// In a real system this would be one-to-many to support retries/refunds.
+model Payment {
+  id                String        @id @default(uuid())
+  orderId           String        @unique
+  amountCents       Int
+  status            PaymentStatus
+  // Id returned by the (mocked) external payment provider.
+  externalPaymentId String
+  // Only the last 4 digits are ever persisted -- see payment service.
+  cardLast4         String
+  failureReason     String?
+  createdAt         DateTime      @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
